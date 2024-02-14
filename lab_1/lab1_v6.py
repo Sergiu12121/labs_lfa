@@ -1,3 +1,5 @@
+import random
+
 class Grammar:
     def __init__(self, variables, terminals, productions, start_variable):
         self.variables = set(variables)
@@ -15,6 +17,18 @@ class Grammar:
         grammar_str += "Start Variable: {}\n".format(self.start_variable)
         return grammar_str
 
+    def generate_string(self):
+        """Generates a single string from the grammar."""
+        def generate_from(variable):
+            production = random.choice(self.productions[variable])
+            return ''.join(generate_from(sym) if sym in self.variables else sym for sym in production)
+        
+        return generate_from(self.start_variable)
+
+    def generate_strings(self, n):
+        """Generates n valid strings from the grammar."""
+        return [self.generate_string() for _ in range(n)]
+
 variables = ['S', 'I', 'J', 'K']
 terminals = ['a', 'b', 'c', 'e', 'n', 'f', 'm']
 productions = {
@@ -24,6 +38,8 @@ productions = {
     'K': ['nK', 'e', 'm']
 }
 start_variable = 'S'
-
 grammar = Grammar(variables, terminals, productions, start_variable)
-print(grammar)
+
+valid_strings = grammar.generate_strings(5)
+for i in valid_strings:
+    print (i)
