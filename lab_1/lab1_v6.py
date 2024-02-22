@@ -58,7 +58,7 @@ class FiniteAutomaton:
         return current_state in self.accept_states
 
 
-# a. Creating the grammar object
+# a
 variables = ['S', 'I', 'J', 'K']
 terminals = ['a', 'b', 'c', 'e', 'n', 'f', 'm']
 productions = {
@@ -70,20 +70,20 @@ productions = {
 start_variable = 'S'
 grammar = Grammar(variables, terminals, productions, start_variable)
 
-# b. Generating 5 valid strings from the grammar
+# b
 valid_strings = grammar.generate_strings(5)
 
-# c. Converting the grammar to a finite automaton
+# c
 finite_automaton = grammar.to_finite_automaton()
 
-# d. Checking if certain strings can be obtained from the finite automaton
+# d
 print()
-test_strings = input("Input the word to check ")
 
 print ("5 VALID STRINGS :")
 for i in valid_strings:
     print(i)
 print()
-print(f"The word {test_strings} is {finite_automaton.check_string(test_strings)}")
-
+test_strings = ['cfbem', 'mcdonalds', 'ccce', 'cbne']
+results = {s: finite_automaton.check_string(s) for s in test_strings}
+print(results)
 
