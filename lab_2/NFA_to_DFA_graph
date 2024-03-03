@@ -1,0 +1,51 @@
+from graphviz import Digraph
+
+# Information from your converted DFA
+dfa_states = [{'q0'}, set(), {'q1'}, {'q2', 'q1'}, {'q3'}, {'q2', 'q4', 'q1'}, {'q2', 'q3'}, {'q3', 'q1'}, {'q4'}, {'q2'}]
+dfa_start_state = {'q0'}
+dfa_accept_states = [{'q2', 'q4', 'q1'}, {'q4'}]
+dfa_transitions = [
+    ({'q0'}, 'a', {'q1'}),
+    ({'q0'}, 'b', set()),
+    ({'q1'}, 'a', set()),
+    ({'q1'}, 'b', {'q2', 'q1'}),
+    (set(), 'a', set()),
+    (set(), 'b', set()),
+    ({'q2', 'q1'}, 'a', {'q3'}),
+    ({'q2', 'q1'}, 'b', {'q2', 'q4', 'q1'}),
+    ({'q3'}, 'a', {'q1'}),
+    ({'q3'}, 'b', set()),
+    ({'q2', 'q4', 'q1'}, 'a', {'q2', 'q3'}),
+    ({'q2', 'q4', 'q1'}, 'b', {'q2', 'q4', 'q1'}),
+    ({'q2', 'q3'}, 'a', {'q3', 'q1'}),
+    ({'q2', 'q3'}, 'b', {'q4'}),
+    ({'q3', 'q1'}, 'a', {'q1'}),
+    ({'q3', 'q1'}, 'b', {'q2', 'q1'}),
+    ({'q4'}, 'a', {'q2'}),
+    ({'q4'}, 'b', set()),
+    ({'q2'}, 'a', {'q3'}),
+    ({'q2'}, 'b', {'q4'})
+]
+
+# Creating the DFA graph
+dfa_graph = Digraph("DFA")
+dfa_graph.attr(rankdir="LR", size="8,5")
+
+# Add a ghost node for initial state arrow
+dfa_graph.node('', shape="none")
+dfa_graph.edge('', str(dfa_start_state))
+
+# Add states to the graph, differentiating between normal and accepting states
+for state in dfa_states:
+    if state in dfa_accept_states:
+        dfa_graph.node(str(state), shape="doublecircle")
+    elif state:  # Only add non-empty states
+        dfa_graph.node(str(state), shape="circle")
+
+# Add transitions to the graph
+for src, label, dst in dfa_transitions:
+    if src and dst:  # Only add transitions between non-empty states
+        dfa_graph.edge(str(src), str(dst), label=label)
+
+# Show the graph (the output will be handled by the system to display the image)
+dfa_graph.render("/Users/sergiu_sd/Desktop/finite_automaton2", view=True, format="png")

@@ -39,13 +39,18 @@ for state, rules in readable_grammar.items():
 
 # b) Determine if the FA is deterministic
 def is_deterministic(transitions, states, alphabet):
-    transition_count = {}
+    # Create a defaultdict of lists to hold the possible transitions for each state-symbol pair
+    transition_map = defaultdict(list)
+    for (state, symbol), next_state in transitions.items():
+        transition_map[(state, symbol)].append(next_state)
+
+    # Now, check if there is more than one transition for any state-symbol pair
     for state in states:
         for symbol in alphabet:
-            transition_count[(state, symbol)] = 0
-    for (state, symbol), _ in transitions.items():
-        transition_count[(state, symbol)] += 1
-    return all(count <= 1 for count in transition_count.values())
+            if len(transition_map[(state, symbol)]) > 1:
+                return False  # Found a state-symbol pair with multiple transitions: NFA
+    return True  # No state-symbol pairs with multiple transitions: DFA
+
 
 
 is_dfa = is_deterministic(transitions, states, alphabet)
@@ -74,13 +79,15 @@ nfa = {
 def nfa_to_dfa(nfa):
     new_states_list = []
     dfa = {
-        "states": [],
+        "states": [frozenset()],
         "alphabet": nfa["alphabet"],
         "transitions": defaultdict(dict),
         "start_state": frozenset([nfa["start_state"]]),
         "accept_states": set(),
     }
     states_queue = [frozenset([nfa["start_state"]])]
+    dfa["transitions"][frozenset()][nfa["alphabet"][0]] = frozenset()
+    dfa["transitions"][frozenset()][nfa["alphabet"][1]] = frozenset()
     while states_queue:
         current_state = states_queue.pop(0)
         if current_state not in new_states_list:
@@ -95,13 +102,15 @@ def nfa_to_dfa(nfa):
                         [],
                     )
                 )
+                if not next_state:
+                    next_state = frozenset()
                 dfa["transitions"][current_state][symbol] = next_state
-                if next_state not in new_states_list:
+                if next_state not in new_states_list and next_state:
                     states_queue.append(next_state)
     for new_state in new_states_list:
         if any(state in nfa["accept_states"] for state in new_state):
             dfa["accept_states"].add(new_state)
-    dfa["states"] = new_states_list
+    dfa["states"].extend(new_states_list)
     return dfa
 
 
