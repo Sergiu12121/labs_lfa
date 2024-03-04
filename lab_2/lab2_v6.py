@@ -14,7 +14,7 @@ class FiniteAutomaton:
         grammar = {state: set() for state in self.states}
         for (current_state, input_symbol), next_states in self.delta.items():
             for next_state in next_states:
-                grammar[current_state].add((input_symbol, "A" + next_state[1]))
+                grammar[current_state].add((input_symbol, "q" + next_state[1]))
 
         for final_state in self.final_states:
             grammar[final_state].add(("ε",))  # Add ε-production for final states
