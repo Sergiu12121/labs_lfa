@@ -1,160 +1,109 @@
-from collections import defaultdict
 from graphviz import Digraph
 
-states = ["q0", "q1", "q2", "q3", "q4"]
-alphabet = ["a", "b"]
-accepting_states = ["q4"]
-transitions = {
-    ("q0", "a"): "q1",
-    ("q1", "b"): "q2",
-    ("q2", "b"): "q3",
-    ("q3", "a"): "q1",
-    ("q2", "a"): "q4",
-}
 
+class FiniteAutomaton:
+    def __init__(self, states, alphabet, start_state, final_states, transitions):
+        self.states = states
+        self.alphabet = alphabet
+        self.start_state = start_state
+        self.final_states = final_states
+        self.current_state = self.start_state
+        self.delta = transitions
 
-# a) Convert FA to a Regular Grammar
-def convert_fa_to_rg(states, transitions, accepting_states):
-    grammar = {}
-    for state in states:
-        grammar[state] = []
-        for (current_state, symbol), next_state in transitions.items():
-            if current_state == state:
-                grammar[state].append((symbol, next_state))
-        if state in accepting_states:
-            grammar[state].append(("ε",))
-    return grammar
+    def to_regular_grammar(self):
+        grammar = {state: set() for state in self.states}
+        for (current_state, input_symbol), next_states in self.delta.items():
+            for next_state in next_states:
+                grammar[current_state].add((input_symbol, "A" + next_state[1]))
 
+        for final_state in self.final_states:
+            grammar[final_state].add(("ε",))  # Add ε-production for final states
 
-converted_grammar = convert_fa_to_rg(states, transitions, accepting_states)
-readable_grammar = {}
-for state, productions in converted_grammar.items():
-    readable_grammar[state] = ["".join(prod) for prod in productions]
+        for state, productions in grammar.items():
+            for production in productions:
+                print(
+                    f"q{state[1]} -> {production[0]}"
+                    + (f"q{production[1][1]}" if len(production) > 1 else "")
+                )
 
-print("Regular Grammar:")
-for state, rules in readable_grammar.items():
-    for rule in rules:
-        print(f"{state} -> {rule}")
+    def determine_type(self):
+        for state in self.states:
+            transitions = {symbol: 0 for symbol in self.alphabet}
+            for (current_state, input_symbol), next_states in self.delta.items():
+                if current_state == state:
+                    transitions[input_symbol] += len(next_states)
 
+            if any(count > 1 for count in transitions.values()):
+                print("NFA")
+                return
 
-# b) Determine if the FA is deterministic
-def is_deterministic(transitions, states, alphabet):
-    # Create a defaultdict of lists to hold the possible transitions for each state-symbol pair
-    transition_map = defaultdict(list)
-    for (state, symbol), next_state in transitions.items():
-        transition_map[(state, symbol)].append(next_state)
+        print("DFA")
 
-    # Now, check if there is more than one transition for any state-symbol pair
-    for state in states:
-        for symbol in alphabet:
-            if len(transition_map[(state, symbol)]) > 1:
-                return False  # Found a state-symbol pair with multiple transitions: NFA
-    return True  # No state-symbol pairs with multiple transitions: DFA
+    def convert_to_dfa(self):
+        new_states = {frozenset([self.start_state])}
+        dfa_transitions = {}
+        unmarked_states = new_states.copy()
 
-
-
-is_dfa = is_deterministic(transitions, states, alphabet)
-
-if is_dfa:
-    print("\nThe FA is deterministic (DFA).")
-else:
-    print("\nThe FA is non-deterministic (NFA).")
-
-# Exercise c) Convert NFA to DFA
-nfa = {
-    "states": ["q0", "q1", "q2", "q3", "q4"],
-    "alphabet": ["a", "b"],
-    "transitions": {
-        "q0": {"a": ["q1"]},
-        "q1": {"b": ["q1", "q2"]},
-        "q2": {"a": ["q3"], "b": ["q4"]},
-        "q3": {"a": ["q1"]},
-        "q4": {"a": ["q2"]},
-    },
-    "start_state": "q0",
-    "accept_states": ["q4"],
-}
-
-
-def nfa_to_dfa(nfa):
-    new_states_list = []
-    dfa = {
-        "states": [frozenset()],
-        "alphabet": nfa["alphabet"],
-        "transitions": defaultdict(dict),
-        "start_state": frozenset([nfa["start_state"]]),
-        "accept_states": set(),
-    }
-    states_queue = [frozenset([nfa["start_state"]])]
-    dfa["transitions"][frozenset()][nfa["alphabet"][0]] = frozenset()
-    dfa["transitions"][frozenset()][nfa["alphabet"][1]] = frozenset()
-    while states_queue:
-        current_state = states_queue.pop(0)
-        if current_state not in new_states_list:
-            new_states_list.append(current_state)
-            for symbol in nfa["alphabet"]:
-                next_state = frozenset(
+        while unmarked_states:
+            current_state_set = unmarked_states.pop()
+            for symbol in self.alphabet:
+                next_state_set = frozenset(
                     sum(
                         [
-                            nfa["transitions"].get(state, {}).get(symbol, [])
-                            for state in current_state
+                            self.delta.get((state, symbol), [])
+                            for state in current_state_set
                         ],
                         [],
                     )
                 )
-                if not next_state:
-                    next_state = frozenset()
-                dfa["transitions"][current_state][symbol] = next_state
-                if next_state not in new_states_list and next_state:
-                    states_queue.append(next_state)
-    for new_state in new_states_list:
-        if any(state in nfa["accept_states"] for state in new_state):
-            dfa["accept_states"].add(new_state)
-    dfa["states"].extend(new_states_list)
-    return dfa
+                if next_state_set:
+                    dfa_transitions[(current_state_set, symbol)] = next_state_set
+
+                    if next_state_set not in new_states:
+                        new_states.add(next_state_set)
+                        unmarked_states.add(next_state_set)
+
+        for (state_set, symbol), next_state_set in dfa_transitions.items():
+            if next_state_set:
+                print(f"    {set(state_set)} --{symbol}--> {set(next_state_set)}")
+
+    def visualize(self):
+        dot = Digraph()
+        dot.attr(rankdir="LR", size="8")
+
+        dot.node("fake", style="invisible")
+        dot.edge("fake", f"q{self.start_state[1]}", style="bold")
+        for final_state in self.final_states:
+            dot.node(f"q{final_state[1]}", shape="doublecircle")
+
+        for state in self.states:
+            if f"q{state[1]}" not in dot.body:  # Avoid duplicating final states
+                dot.node(f"q{state[1]}")
+
+        for (state, symbol), next_states in self.delta.items():
+            for next_state in next_states:
+                dot.edge(f"q{state[1]}", f"q{next_state[1]}", label=str(symbol))
+
+        dot.render("FA", view=True, format="png")
 
 
-converted_dfa = nfa_to_dfa(nfa)
+states = {"q0", "q1", "q2", "q3", "q4"}
+alphabet = {"a", "b"}
+start_state = "q0"
+final_states = {"q4"}
+transitions = {
+    ("q0", "a"): ["q1"],
+    ("q1", "b"): ["q1", "q2"],
+    ("q2", "b"): ["q3"],
+    ("q3", "a"): ["q1"],
+    ("q2", "a"): ["q4"],
+}
 
-
-def print_dfa(dfa):
-    print("DFA:")
-    print("States:", [set(state) for state in dfa["states"]])
-    print("Start State:", set(dfa["start_state"]))
-    print("Accept States:", [set(state) for state in dfa["accept_states"]])
-    print("Transitions:")
-    for state, transitions in dfa["transitions"].items():
-        for symbol, next_state in transitions.items():
-            print(f"    {set(state)} --{symbol}--> {set(next_state)}")
-
-
-print_dfa(converted_dfa)
-
-# Exercise d) Visualize the FA using Graphviz
-fa = Digraph("finite_automaton")
-fa.attr(rankdir="LR")
-
-# Add states to the graph
-states = ["q0", "q1", "q2", "q3", "q4"]
-for state in states:
-    if state == "q4":
-        fa.node(state, shape="doublecircle")
-    else:
-        fa.node(state, shape="circle")
-
-fa.node("", shape="none")
-fa.edge("", "q0")
-
-transitions = [
-    ("q0", "q1", "a"),
-    ("q1", "q1", "b"),
-    ("q1", "q2", "b"),
-    ("q2", "q3", "b"),
-    ("q2", "q4", "a"),
-    ("q3", "q1", "a"),
-]
-
-for src, dst, label in transitions:
-    fa.edge(src, dst, label=label)
-
-fa.render("/Users/sergiu_sd/Desktop/finite_automaton", view=True, format="png")
+fa = FiniteAutomaton(states, alphabet, start_state, final_states, transitions)
+print("\nThe Regular Grammar:")
+fa.to_regular_grammar()
+print("\nThe Finite Automaton is of type:")
+fa.determine_type()
+print("\nThe NFA converted to DFA:")
+fa.convert_to_dfa()
+fa.visualize()
