@@ -1,38 +1,81 @@
 import random
 import re
 
+def tokenize_regex(pattern):
+    # Tokenizing the regex pattern
+    special_chars = ['*', '+', '?', '^']
+    pattern = pattern.replace('(', '%(').replace(')', ')%').strip('%').replace('%%', '%')
+    segments = pattern.split('%')
 
-def generate_from_regex(pattern, max_repeat=5):
-    def generate_from_group(group):
-        alternatives = group.strip("()").split("|")
-        return random.choice(alternatives)
+    tokens = []
+    for i in range(len(segments)-1, 0, -1):
+        if segments[i][0] in special_chars:
+            segments[i-1] += segments[i][0]
+            segments[i] = segments[i][1:]
 
-    def generate_from_token(token):
-        if token.endswith("?"):
-            return (
-                generate_from_token(token[:-1]) if random.choice([True, False]) else ""
-            )
-        elif token.endswith("*"):
-            return "".join(
-                generate_from_group(token[:-1])
-                for _ in range(random.randint(0, max_repeat))
-            )
-        elif token.endswith("+"):
-            return "".join(
-                generate_from_group(token[:-1])
-                for _ in range(random.randint(1, max_repeat))
-            )
-        else:
-            return generate_from_group(token)
+    for segment in segments:
+        if segment:
+            first_char = segment[0]
+            if first_char == '(':
+                options, modifier = segment[1:-1], segment[-1]
+                if modifier in special_chars:
+                    tokens.append((modifier, options.split('|')))
+                else:
+                    tokens.append(('1', options.split('|')))
+            else:
+                tokens.append(('1', [segment]))
+    return tokens
 
-    tokens = re.findall(r"\([^)]*\)\*|\([^)]*\)\+|\([^)]*\)\?|\([^)]*\)|.", pattern)
+def generate_strings(tokens, num_strings, max_reps):
+    results = []
+    for _ in range(num_strings):
+        result = ""
+        for modifier, options in tokens:
+            choice = random.choice(options)
+            if modifier == '?':
+                result += choice if random.random() > 0.5 else ''
+            elif modifier == '+':
+                result += ''.join([choice] * random.randint(1, max_reps))
+            elif modifier == '*':
+                result += ''.join([choice] * random.randint(0, max_reps))
+            else:
+                result += choice
+        results.append(result)
+    return results
 
-    return "".join(generate_from_token(token) for token in tokens)
+def explain_string_generation(pattern, tokens, num_strings, max_reps):
+    print(f"\nExplaining string generation for the pattern: {pattern}")
+    for _ in range(num_strings):
+        result = ""
+        steps = []
+        for modifier, options in tokens:
+            choice = random.choice(options)
+            if modifier == '1':
+                result += choice
+                steps.append(f"Added '{choice}'")
+            elif modifier == '?':
+                if random.random() > 0.5:
+                    result += choice
+                    steps.append(f"Optionally added '{choice}'")
+            elif modifier == '+':
+                count = random.randint(1, max_reps)
+                result += ''.join([choice] * count)
+                steps.append(f"Added '{choice}' {count} times")
+            elif modifier == '*':
+                count = random.randint(0, max_reps)
+                result += ''.join([choice] * count)
+                steps.append(f"Optionally added '{choice}' {count} times")
 
+        print("\n".join(steps))
+        print(f"Generated string: {result}\n")
 
-regex_patterns = ["(a|b)(c|d)E+G?", "P(Q|R|S)T(UV|W|X)*Z+", "1(0|1)*2(3|4)^536"]
+# Example usage
+pattern = '(a|b)(c|d)E+G?'
+tokens = tokenize_regex(pattern)
 
-# Generate and print strings for each regex pattern
-generated_strings = [generate_from_regex(p) for p in regex_patterns]
-print("\n The generated words are:")
-print(generated_strings, "\n")
+num_strings = 5
+max_reps = 5
+
+generated_strings = generate_strings(tokens, num_strings, max_reps)
+print(generated_strings)
+explain_string_generation(pattern, tokens, num_strings, max_reps)
