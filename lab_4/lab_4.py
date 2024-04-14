@@ -1,81 +1,83 @@
 import random
-import re
+
 
 def tokenize_regex(pattern):
-    # Tokenizing the regex pattern
-    special_chars = ['*', '+', '?', '^']
-    pattern = pattern.replace('(', '%(').replace(')', ')%').strip('%').replace('%%', '%')
-    segments = pattern.split('%')
-
+    triggers = ["*", "+", "?", "^"]
     tokens = []
-    for i in range(len(segments)-1, 0, -1):
-        if segments[i][0] in special_chars:
-            segments[i-1] += segments[i][0]
-            segments[i] = segments[i][1:]
+    elements = pattern.replace("(", " (").replace(")", ") ").split()
 
-    for segment in segments:
-        if segment:
-            first_char = segment[0]
-            if first_char == '(':
-                options, modifier = segment[1:-1], segment[-1]
-                if modifier in special_chars:
-                    tokens.append((modifier, options.split('|')))
-                else:
-                    tokens.append(('1', options.split('|')))
-            else:
-                tokens.append(('1', [segment]))
+    for element in elements:
+        if element in triggers:
+            tokens[-1] = (element, tokens[-1][1])
+        elif "|" in element:
+            parts = element.strip("()").split("|")
+            last_char = element[-1]
+            count = last_char if last_char in "0123456789" else "1"
+            tokens.append((count, parts))
+        else:
+            tokens.append(("1", [element]))
+
     return tokens
 
-def generate_strings(tokens, num_strings, max_reps):
+
+def generate_strings(tokenized_pattern, num_strings, max_repeats):
+    def print_generation_step(step_description):
+        print(step_description)
+
     results = []
+
     for _ in range(num_strings):
         result = ""
-        for modifier, options in tokens:
-            choice = random.choice(options)
-            if modifier == '?':
-                result += choice if random.random() > 0.5 else ''
-            elif modifier == '+':
-                result += ''.join([choice] * random.randint(1, max_reps))
-            elif modifier == '*':
-                result += ''.join([choice] * random.randint(0, max_reps))
+        for multiplier, elements in tokenized_pattern:
+            element = random.choice(elements)
+            step_msg = f"Chosen element '{element}' from {elements} with multiplier '{multiplier}'"
+            if multiplier == "1":
+                result += element
+                print_generation_step(f"Appending '{element}': {result}")
+            elif multiplier == "?":
+                if random.choice([True, False]):
+                    result += element
+                    print_generation_step(f"Optionally appending '{element}': {result}")
+            elif multiplier == "+":
+                repeats = random.randint(1, max_repeats)
+                result += element * repeats
+                print_generation_step(
+                    f"Appending '{element}' repeated {repeats} times: {result}"
+                )
+            elif multiplier == "*":
+                repeats = random.randint(0, max_repeats)
+                result += element * repeats
+                print_generation_step(
+                    f"Appending '{element}' repeated {repeats} times (maybe 0): {result}"
+                )
             else:
-                result += choice
+                repeats = int(multiplier)
+                result += element * repeats
+                print_generation_step(
+                    f"Appending '{element}' repeated {repeats} times (fixed): {result}"
+                )
+
         results.append(result)
+        print("\n")
     return results
 
-def explain_string_generation(pattern, tokens, num_strings, max_reps):
-    print(f"\nExplaining string generation for the pattern: {pattern}")
-    for _ in range(num_strings):
-        result = ""
-        steps = []
-        for modifier, options in tokens:
-            choice = random.choice(options)
-            if modifier == '1':
-                result += choice
-                steps.append(f"Added '{choice}'")
-            elif modifier == '?':
-                if random.random() > 0.5:
-                    result += choice
-                    steps.append(f"Optionally added '{choice}'")
-            elif modifier == '+':
-                count = random.randint(1, max_reps)
-                result += ''.join([choice] * count)
-                steps.append(f"Added '{choice}' {count} times")
-            elif modifier == '*':
-                count = random.randint(0, max_reps)
-                result += ''.join([choice] * count)
-                steps.append(f"Optionally added '{choice}' {count} times")
 
-        print("\n".join(steps))
-        print(f"Generated string: {result}\n")
+regex_patterns = ["(a|b)(c|d)E⁺G?", "P(Q|R|S)T(UV|W|X)*Z⁺", "1(0|1)*2(3|4)⁵36"]
+tokenized_regex_patterns = [
+    [("1", ["a", "b"]), ("1", ["c", "d"]), ("+", ["E"]), ("?", ["G"])],
+    [
+        ("1", ["P"]),
+        ("1", ["Q", "R", "S"]),
+        ("1", ["T"]),
+        ("*", ["UV", "W", "X"]),
+        ("+", ["Z"]),
+    ],
+    [("1", ["1"]), ("*", ["0", "1"]), ("1", ["2"]), ("5", ["3", "4"]), ("1", ["36"])],
+]
+max_length = 5  # Limit for symbols written an undefined number of times
+number_of_strings = 5  # Number of strings to generate
 
-# Example usage
-pattern = '(a|b)(c|d)E+G?'
-tokens = tokenize_regex(pattern)
-
-num_strings = 5
-max_reps = 5
-
-generated_strings = generate_strings(tokens, num_strings, max_reps)
-print(generated_strings)
-explain_string_generation(pattern, tokens, num_strings, max_reps)
+for tokens, pattern in zip(tokenized_regex_patterns, regex_patterns):
+    print(f"{number_of_strings} random strings for the regex pattern '{pattern}':")
+    generate_strings(tokens, number_of_strings, max_length)
+    print("\n")
