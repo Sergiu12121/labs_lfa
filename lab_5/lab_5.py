@@ -140,16 +140,14 @@ class Grammar(BaseGrammar):
 
 
 grammar = Grammar(
-    vn=["S", "A", "B", "C", "D", "E", "F"],
+    vn=["S", "A", "B", "C", "E"],
     vt=["a", "b", "c"],
     p={
         "S": ["aB", "AC"],
-        "A": ["a", "ASC", "BC", "aD"],
-        "B": ["b", "bS", "bF"],
-        "C": ["ε", "BA", "FB"],
-        "E": ["aB"],
-        "D": ["abC"],
-        "F": ["c", "cS"],
+        "A": ["a", "ASC", "BC"],
+        "B": ["b", "bS"],
+        "C": ["ε", "BA"],
+        "E": ["bB"],
     },
     s="S",
 )
